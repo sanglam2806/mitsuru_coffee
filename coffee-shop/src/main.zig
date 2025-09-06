@@ -1,27 +1,35 @@
 const std = @import("std");
 const coffee_shop = @import("coffee_shop");
+const zap = @import("zap");
 
 pub fn main() !void {
-    // Prints to stderr, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    std.debug.print("Hello Na-chan from Zig server\n", .{});
+
+    var listener = zap.HttpListener.init(.{
+        .port = 3000,
+        .on_request =  on_request,
+        .log = true,
+    });
+    try listener.listen();
+
+    std.debug.print("Listening on localhost \n", .{});
+
+    //start worker thread
+    zap.start(.{
+        .threads = 2,
+        .workers = 2,
+    });
+
     try coffee_shop.bufferedPrint();
 }
 
-test "simple test" {
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(i32) = .empty;
-    defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(gpa, 42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
-}
+fn on_request(r: zap.Request) !void {
+     if (r.path) |the_path| {
+        std.debug.print("PATH: {s}\n", .{the_path});
+    }
 
-test "fuzz example" {
-    const Context = struct {
-        fn testOne(context: @This(), input: []const u8) anyerror!void {
-            _ = context;
-            // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-            try std.testing.expect(!std.mem.eql(u8, "canyoufindme", input));
-        }
-    };
-    try std.testing.fuzz(Context{}, Context.testOne, .{});
+    if (r.query) |the_query| {
+        std.debug.print("QUERY: {s}\n", .{the_query});
+    }
+    r.sendBody("<html><body><h1>Hello Na-chan from with love!!</h1></body></html>") catch return;
 }
